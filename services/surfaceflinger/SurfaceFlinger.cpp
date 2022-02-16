@@ -1957,7 +1957,10 @@ void SurfaceFlinger::onMessageInvalidate(int64_t vsyncId, nsecs_t expectedVSyncT
         // We received the present fence from the HWC, so we assume it successfully updated
         // the mode, hence we update SF.
         mSetActiveModePending = false;
-        ON_MAIN_THREAD(setActiveModeInternal());
+        {
+            Mutex::Autolock lock(mStateLock);
+            setActiveModeInternal();
+        }
     }
 
     if (framePending) {
@@ -2404,6 +2407,7 @@ void SurfaceFlinger::postComposition() {
     mTimeStats->recordDisplayEventConnectionCount(sfConnections + appConnections);
 
     if (isDisplayConnected && !display->isPoweredOn()) {
+        getRenderEngine().cleanupPostRender();
         return;
     }
 
