@@ -256,11 +256,11 @@ void Layer::onRemovedFromCurrentState() {
     std::sort(layersInTree.begin(), layersInTree.end());
 
     REQUIRE_MUTEX(mFlinger->mStateLock);
-    traverse(LayerVector::StateSet::Current, [&](Layer* layer) {
-        ASSERT_MUTEX(layer->mFlinger->mStateLock);
-        layer->removeFromCurrentState();
-        layer->removeRelativeZ(layersInTree);
-    });
+    traverse(LayerVector::StateSet::Current,
+             [&](Layer* layer) REQUIRES(layer->mFlinger->mStateLock) {
+                 layer->removeFromCurrentState();
+                 layer->removeRelativeZ(layersInTree);
+             });
 }
 
 void Layer::addToCurrentState() {

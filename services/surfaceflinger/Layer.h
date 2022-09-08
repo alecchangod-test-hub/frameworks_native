@@ -901,8 +901,8 @@ public:
 
     virtual bool simpleBufferUpdate(const layer_state_t&) const { return false; }
 
-    // constant, exposed so SurfaceFlinger can assert that it's held
-    sp<SurfaceFlinger> mFlinger;
+    // Exposed so SurfaceFlinger can assert that it's held
+    const sp<SurfaceFlinger> mFlinger;
 
 protected:
     friend class impl::SurfaceInterceptor;
