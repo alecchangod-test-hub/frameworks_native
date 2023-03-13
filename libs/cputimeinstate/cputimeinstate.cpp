@@ -55,7 +55,7 @@ static uint32_t gNPolicies = 0;
 static uint32_t gNCpus = 0;
 static std::vector<std::vector<uint32_t>> gPolicyFreqs;
 static std::vector<std::vector<uint32_t>> gPolicyCpus;
-static std::vector<uint32_t> cpu_matrix;
+static std::vector<uint32_t> gCpuIndexMap;
 static std::set<uint32_t> gAllFreqs;
 static unique_fd gTisTotalMapFd;
 static unique_fd gTisMapFd;
@@ -134,11 +134,11 @@ static bool initGlobals() {
         }
         gPolicyCpus.emplace_back(*cpus);
     }
-    cpu_matrix = std::vector<uint32_t>(max_cpu_number+1, -1);
+    gCpuIndexMap = std::vector<uint32_t>(max_cpu_number+1, -1);
     uint32_t cpuorder = 0;
     for (const auto &cpuList : gPolicyCpus) {
         for (auto cpu : cpuList) {
-            cpu_matrix[cpu] = cpuorder++;
+            gCpuIndexMap[cpu] = cpuorder++;
         }
     }
 
@@ -289,7 +289,7 @@ std::optional<std::vector<std::vector<uint64_t>>> getTotalCpuFreqTimes() {
         for (uint32_t policyIdx = 0; policyIdx < gNPolicies; ++policyIdx) {
             if (freqIdx >= gPolicyFreqs[policyIdx].size()) continue;
             for (const auto &cpu : gPolicyCpus[policyIdx]) {
-                out[policyIdx][freqIdx] += vals[cpu_matrix[cpu]];
+                out[policyIdx][freqIdx] += vals[gCpuIndexMap[cpu]];
             }
         }
     }
@@ -328,7 +328,8 @@ std::optional<std::vector<std::vector<uint64_t>>> getUidCpuFreqTimes(uint32_t ui
             auto end = nextOffset < gPolicyFreqs[j].size() ? begin + FREQS_PER_ENTRY : out[j].end();
 
             for (const auto &cpu : gPolicyCpus[j]) {
-                std::transform(begin, end, std::begin(vals[cpu_matrix[cpu]].ar), begin, std::plus<uint64_t>());
+                std::transform(begin, end, std::begin(vals[gCpuIndexMap[cpu]].ar), begin,
+                               std::plus<uint64_t>());
             }
         }
     }
@@ -394,7 +395,8 @@ getUidsUpdatedCpuFreqTimes(uint64_t *lastUpdate) {
             auto end = nextOffset < gPolicyFreqs[i].size() ? begin + FREQS_PER_ENTRY :
                 map[key.uid][i].end();
             for (const auto &cpu : gPolicyCpus[i]) {
-                std::transform(begin, end, std::begin(vals[cpu_matrix[cpu]].ar), begin, std::plus<uint64_t>());
+                std::transform(begin, end, std::begin(vals[gCpuIndexMap[cpu]].ar), begin,
+                               std::plus<uint64_t>());
             }
         }
         prevKey = key;
@@ -448,8 +450,8 @@ std::optional<concurrent_time_t> getUidConcurrentTimes(uint32_t uid, bool retry)
                                                                      : ret.policy[policy].end();
 
             for (const auto &cpu : gPolicyCpus[policy]) {
-                std::transform(policyBegin, policyEnd, std::begin(vals[cpu_matrix[cpu]].policy), policyBegin,
-                               std::plus<uint64_t>());
+                std::transform(policyBegin, policyEnd, std::begin(vals[gCpuIndexMap[cpu]].policy),
+                               policyBegin, std::plus<uint64_t>());
             }
         }
     }
@@ -517,8 +519,8 @@ std::optional<std::unordered_map<uint32_t, concurrent_time_t>> getUidsUpdatedCon
                                                                 : ret[key.uid].policy[policy].end();
 
             for (const auto &cpu : gPolicyCpus[policy]) {
-                std::transform(policyBegin, policyEnd, std::begin(vals[cpu_matrix[cpu]].policy), policyBegin,
-                               std::plus<uint64_t>());
+                std::transform(policyBegin, policyEnd, std::begin(vals[gCpuIndexMap[cpu]].policy),
+                               policyBegin, std::plus<uint64_t>());
             }
         }
     } while (prevKey = key, !getNextMapKey(gConcurrentMapFd, &prevKey, &key));
@@ -651,7 +653,7 @@ getAggregatedTaskCpuFreqTimes(pid_t tgid, const std::vector<uint16_t> &aggregati
                 auto end = nextOffset < gPolicyFreqs[j].size() ? begin + FREQS_PER_ENTRY
                                                                : map[key.aggregation_key][j].end();
                 for (const auto &cpu : gPolicyCpus[j]) {
-                    std::transform(begin, end, std::begin(vals[cpu_matrix[cpu]].ar), begin,
+                    std::transform(begin, end, std::begin(vals[gCpuIndexMap[cpu]].ar), begin,
                                    std::plus<uint64_t>());
                 }
             }
